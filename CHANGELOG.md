@@ -1,8 +1,12 @@
+# 3.5.1
+- update deps
+
 # 3.5.0
 - Fix listObject with utf-8 prefix
 
 # 3.4.0-pre
 - Better upload progress on web
+
 # 3.3.3
 - Fix empty upload error
 - Update README.md
