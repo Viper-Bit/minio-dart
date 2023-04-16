@@ -1,3 +1,7 @@
+# 3.5.2
+- add dPutObject for adding data as file
+- fix null safety warning
+
 # 3.5.1
 - update deps
 

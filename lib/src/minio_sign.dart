@@ -52,8 +52,7 @@ String getCanonicalRequest(
   queryKeys.sort();
   final requestQuery = queryKeys.map((key) {
     final value = request.url.queryParameters[key];
-    final hasValue = value != null;
-    final valuePart = hasValue ? encodeCanonicalQuery(value!) : '';
+    final valuePart = value != null ? encodeCanonicalQuery(value) : '';
     return encodeCanonicalQuery(key) + '=' + valuePart;
   }).join('&');
 

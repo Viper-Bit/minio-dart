@@ -7,7 +7,7 @@ import 'package:minio/src/minio_helpers.dart';
 import 'package:path/path.dart' show dirname;
 
 extension MinioX on Minio {
-  // Uploads the object using contents from a file
+  /// Uploads the object using contents from a file
   Future<String> fPutObject(
     String bucket,
     String object,
@@ -34,6 +34,43 @@ extension MinioX on Minio {
       object,
       file.openRead().cast<Uint8List>(),
       size: stat.size,
+      metadata: metadata,
+    );
+  }
+
+  /// Uploads the object using contents from a List
+  Future<String> dPutObject(
+    String bucket,
+    String object,
+    List<num> data, {
+    Map<String, String>? metadata,
+    String? mimeType,
+  }) async {
+    MinioInvalidBucketNameError.check(bucket);
+    MinioInvalidObjectNameError.check(object);
+
+    metadata ??= {};
+    if (mimeType != null) {
+      metadata['content-type'] = mimeType;
+    }
+    metadata = prependXAMZMeta(metadata);
+
+    if (data.length > maxObjectSize) {
+      throw MinioError(
+        'data size : ${data.length}, max allowed size : 5TB',
+      );
+    }
+
+    Stream<Uint8List> data2Stream() async* {
+      yield Uint8List.fromList(data.cast());
+    }
+
+
+    return putObject(
+      bucket,
+      object,
+      data2Stream(),
+      size: data.length,
       metadata: metadata,
     );
   }
