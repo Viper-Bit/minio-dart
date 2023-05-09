@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart';
+import 'package:http/io_client.dart';
 import 'package:minio/minio.dart';
 import 'package:minio/src/minio_helpers.dart';
 import 'package:minio/src/minio_s3.dart';
@@ -10,11 +12,15 @@ import 'package:minio/src/minio_sign.dart';
 import 'package:minio/src/utils.dart';
 
 class MinioRequest extends BaseRequest {
-  MinioRequest(String method, Uri url, {this.onProgress}) : super(method, url);
+  MinioRequest(String method, Uri url, this.useSSL,
+      {this.onProgress, this.securityContext})
+      : super(method, url);
 
   dynamic body;
 
   final void Function(int)? onProgress;
+  final SecurityContext? securityContext;
+  final bool useSSL;
 
   @override
   ByteStream finalize() {
@@ -60,13 +66,51 @@ class MinioRequest extends BaseRequest {
     );
   }
 
+  Stream<T> _onDone<T>(Stream<T> stream, void Function() onDone) =>
+      stream.transform(StreamTransformer.fromHandlers(handleDone: (sink) {
+        sink.close();
+        onDone();
+      }));
+
+  @override
+  Future<StreamedResponse> send() async {
+    final client = HttpClient(context: securityContext);
+
+    if (useSSL && securityContext == null) {
+      client.badCertificateCallback = (cert, host, port) => true;
+    }
+
+    final ioClient = IOClient(client);
+    try {
+      var response = await ioClient.send(this);
+      var stream = _onDone(response.stream, ioClient.close);
+      return StreamedResponse(ByteStream(stream), response.statusCode,
+          contentLength: response.contentLength,
+          request: response.request,
+          headers: response.headers,
+          isRedirect: response.isRedirect,
+          persistentConnection: response.persistentConnection,
+          reasonPhrase: response.reasonPhrase);
+    } catch (_) {
+      ioClient.close();
+      rethrow;
+    }
+  }
+
   MinioRequest replace({
     String? method,
     Uri? url,
+    bool? useSSL,
+    SecurityContext? securityContext,
     Map<String, String>? headers,
     body,
   }) {
-    final result = MinioRequest(method ?? this.method, url ?? this.url);
+    final result = MinioRequest(
+      method ?? this.method,
+      url ?? this.url,
+      useSSL ?? this.useSSL,
+      securityContext: securityContext ?? this.securityContext,
+    );
     result.body = body ?? this.body;
     result.headers.addAll(headers ?? this.headers);
     return result;
@@ -117,7 +161,7 @@ class MinioClient {
   }
 
   final Minio minio;
-  final String userAgent = 'MinIO (Unknown; Unknown) minio-dart/2.0.0';
+  final String userAgent = 'MinIO (Unknown; Unknown) minio-dart/3.5.3';
 
   late bool enableSHA256;
   late bool anonymous;
@@ -225,7 +269,13 @@ class MinioClient {
     void Function(int)? onProgress,
   ) {
     final url = getRequestUrl(bucket, object, resource, queries);
-    final request = MinioRequest(method, url, onProgress: onProgress);
+    final request = MinioRequest(
+      method,
+      url,
+      minio.useSSL,
+      securityContext: minio.securityContext,
+      onProgress: onProgress,
+    );
     request.headers['host'] = url.authority;
 
     if (headers != null) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:minio/models.dart';
@@ -25,6 +26,7 @@ class Minio {
     required this.secretKey,
     int? port,
     this.useSSL = true,
+    this.securityContext,
     this.sessionToken,
     this.region,
     this.enableTrace = false,
@@ -52,6 +54,9 @@ class Minio {
 
   /// maximum object size (5TB)
   final maxObjectSize = 5 * 1024 * 1024 * 1024 * 1024;
+
+  /// securityContext for trusting self signed servers or key pinning
+  final SecurityContext? securityContext;
 
   /// endPoint is a host name or an IP address.
   ///

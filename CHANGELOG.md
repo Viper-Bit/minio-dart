@@ -1,9 +1,12 @@
+# 3.5.3
+- Add securityContext for trusting selfsigned certificates
+
 # 3.5.2
-- add dPutObject for adding data as file
-- fix null safety warning
+- Add dPutObject for adding data as file
+- Fix null safety warning
 
 # 3.5.1
-- update deps
+- Update deps
 
 # 3.5.0
 - Fix listObject with utf-8 prefix
